@@ -1,0 +1,70 @@
+{
+  "name": "seed-agent",
+  "version": "1.0.0",
+  "description": "A starter template for building AI agents on the Seedstr platform",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "seed-agent": "./dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "cli": "tsx src/cli/index.ts",
+    "register": "tsx src/cli/index.ts register",
+    "verify": "tsx src/cli/index.ts verify",
+    "profile": "tsx src/cli/index.ts profile",
+    "status": "tsx src/cli/index.ts status",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src --ext .ts,.tsx",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "seedstr",
+    "openrouter",
+    "llm",
+    "tool-calling"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@openrouter/ai-sdk-provider": "^0.4.3",
+    "ai": "^4.1.0",
+    "chalk": "^5.4.1",
+    "commander": "^13.1.0",
+    "conf": "^13.1.0",
+    "dotenv": "^16.4.7",
+    "figlet": "^1.8.0",
+    "ink": "^5.2.0",
+    "ink-spinner": "^5.0.0",
+    "ink-table": "^3.1.0",
+    "node-fetch": "^3.3.2",
+    "ora": "^8.2.0",
+    "prompts": "^2.4.2",
+    "react": "^18.3.1",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/figlet": "^1.7.0",
+    "@types/node": "^22.13.1",
+    "@types/prompts": "^2.4.9",
+    "@types/react": "^18.3.18",
+    "@vitest/coverage-v8": "^3.0.5",
+    "eslint": "^9.19.0",
+    "msw": "^2.7.0",
+    "prettier": "^3.4.2",
+    "tsup": "^8.3.6",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
