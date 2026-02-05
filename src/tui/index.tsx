@@ -3,7 +3,7 @@ import { render, Box, Text, useApp, useInput } from "ink";
 import Spinner from "ink-spinner";
 import { AgentRunner } from "../agent/runner.js";
 import { getConfig, getStoredAgent } from "../config/index.js";
-import type { AgentEvent, Job } from "../types/index.js";
+import type { AgentEvent } from "../types/index.js";
 
 interface LogEntry {
   time: string;
@@ -18,6 +18,12 @@ interface Stats {
   errors: number;
   uptime: number;
   activeJobs: number;
+  totalPromptTokens: number;
+  totalCompletionTokens: number;
+  totalTokens: number;
+  totalCost: number;
+  avgTokensPerJob: number;
+  avgCostPerJob: number;
 }
 
 function formatUptime(ms: number): string {
@@ -58,6 +64,22 @@ function Header() {
   );
 }
 
+function formatTokens(tokens: number): string {
+  if (tokens >= 1_000_000) {
+    return `${(tokens / 1_000_000).toFixed(2)}M`;
+  } else if (tokens >= 1_000) {
+    return `${(tokens / 1_000).toFixed(1)}K`;
+  }
+  return tokens.toString();
+}
+
+function formatCost(cost: number): string {
+  if (cost < 0.01) {
+    return `$${cost.toFixed(4)}`;
+  }
+  return `$${cost.toFixed(2)}`;
+}
+
 function StatsPanel({ stats, running }: { stats: Stats; running: boolean }) {
   return (
     <Box
@@ -88,6 +110,42 @@ function StatsPanel({ stats, running }: { stats: Stats; running: boolean }) {
         <Text color="red">✗ Errors: {stats.errors}</Text>
         <Text color="gray"> │ </Text>
         <Text color="blue">⚡ Active: {stats.activeJobs}</Text>
+      </Box>
+    </Box>
+  );
+}
+
+function TokenStatsPanel({ stats }: { stats: Stats }) {
+  return (
+    <Box
+      flexDirection="column"
+      borderStyle="round"
+      borderColor="gray"
+      paddingX={1}
+      marginBottom={1}
+    >
+      <Text color="cyan" bold>Token Usage & Cost</Text>
+      <Box marginTop={1}>
+        <Box flexDirection="column" marginRight={3}>
+          <Text color="gray">Prompt Tokens:</Text>
+          <Text color="gray">Completion Tokens:</Text>
+          <Text color="gray">Total Tokens:</Text>
+        </Box>
+        <Box flexDirection="column" marginRight={3}>
+          <Text color="white">{formatTokens(stats.totalPromptTokens)}</Text>
+          <Text color="white">{formatTokens(stats.totalCompletionTokens)}</Text>
+          <Text color="cyan" bold>{formatTokens(stats.totalTokens)}</Text>
+        </Box>
+        <Box flexDirection="column" marginRight={3}>
+          <Text color="gray">│ Total Cost:</Text>
+          <Text color="gray">│ Avg/Job:</Text>
+          <Text color="gray">│ Avg Tokens/Job:</Text>
+        </Box>
+        <Box flexDirection="column">
+          <Text color="yellow" bold>{formatCost(stats.totalCost)}</Text>
+          <Text color="white">{formatCost(stats.avgCostPerJob)}</Text>
+          <Text color="white">{formatTokens(stats.avgTokensPerJob)}</Text>
+        </Box>
       </Box>
     </Box>
   );
@@ -145,6 +203,12 @@ function App() {
     errors: 0,
     uptime: 0,
     activeJobs: 0,
+    totalPromptTokens: 0,
+    totalCompletionTokens: 0,
+    totalTokens: 0,
+    totalCost: 0,
+    avgTokensPerJob: 0,
+    avgCostPerJob: 0,
   });
   const [running, setRunning] = useState(false);
   const [runner] = useState(() => new AgentRunner());
@@ -183,7 +247,10 @@ function App() {
           addLog("tool", `Tool: ${event.tool}`, "magenta");
           break;
         case "response_generated":
-          addLog("gen", `Generated response: ${event.preview.substring(0, 50)}...`, "white");
+          const usageInfo = event.usage 
+            ? ` (${formatTokens(event.usage.totalTokens)} tokens, ${formatCost(event.usage.estimatedCost)})`
+            : "";
+          addLog("gen", `Generated: ${event.preview.substring(0, 40)}...${usageInfo}`, "white");
           break;
         case "response_submitted":
           addLog("done", `Submitted: ${event.responseId.substring(0, 8)}...`, "green");
@@ -234,6 +301,7 @@ function App() {
     <Box flexDirection="column" padding={1}>
       <Header />
       <StatsPanel stats={stats} running={running} />
+      <TokenStatsPanel stats={stats} />
       <LogPanel logs={logs} />
       <HelpBar />
     </Box>
