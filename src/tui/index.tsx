@@ -18,12 +18,8 @@ interface Stats {
   errors: number;
   uptime: number;
   activeJobs: number;
-  totalPromptTokens: number;
-  totalCompletionTokens: number;
   totalTokens: number;
   totalCost: number;
-  avgTokensPerJob: number;
-  avgCostPerJob: number;
 }
 
 function formatUptime(ms: number): string {
@@ -90,7 +86,6 @@ function StatsPanel({ stats, running }: { stats: Stats; running: boolean }) {
       marginBottom={1}
     >
       <Box>
-        <Text color="cyan">Status: </Text>
         {running ? (
           <Text color="green">
             <Spinner type="dots" /> Running
@@ -99,53 +94,17 @@ function StatsPanel({ stats, running }: { stats: Stats; running: boolean }) {
           <Text color="yellow">Stopped</Text>
         )}
         <Text color="gray"> │ </Text>
-        <Text color="cyan">Uptime: </Text>
         <Text color="white">{formatUptime(stats.uptime)}</Text>
-      </Box>
-      <Box>
-        <Text color="green">✓ Processed: {stats.jobsProcessed}</Text>
         <Text color="gray"> │ </Text>
-        <Text color="yellow">⊘ Skipped: {stats.jobsSkipped}</Text>
+        <Text color="green">✓ {stats.jobsProcessed}</Text>
         <Text color="gray"> │ </Text>
-        <Text color="red">✗ Errors: {stats.errors}</Text>
+        <Text color="yellow">⊘ {stats.jobsSkipped}</Text>
         <Text color="gray"> │ </Text>
-        <Text color="blue">⚡ Active: {stats.activeJobs}</Text>
-      </Box>
-    </Box>
-  );
-}
-
-function TokenStatsPanel({ stats }: { stats: Stats }) {
-  return (
-    <Box
-      flexDirection="column"
-      borderStyle="round"
-      borderColor="gray"
-      paddingX={1}
-      marginBottom={1}
-    >
-      <Text color="cyan" bold>Token Usage & Cost</Text>
-      <Box marginTop={1}>
-        <Box flexDirection="column" marginRight={3}>
-          <Text color="gray">Prompt Tokens:</Text>
-          <Text color="gray">Completion Tokens:</Text>
-          <Text color="gray">Total Tokens:</Text>
-        </Box>
-        <Box flexDirection="column" marginRight={3}>
-          <Text color="white">{formatTokens(stats.totalPromptTokens)}</Text>
-          <Text color="white">{formatTokens(stats.totalCompletionTokens)}</Text>
-          <Text color="cyan" bold>{formatTokens(stats.totalTokens)}</Text>
-        </Box>
-        <Box flexDirection="column" marginRight={3}>
-          <Text color="gray">│ Total Cost:</Text>
-          <Text color="gray">│ Avg/Job:</Text>
-          <Text color="gray">│ Avg Tokens/Job:</Text>
-        </Box>
-        <Box flexDirection="column">
-          <Text color="yellow" bold>{formatCost(stats.totalCost)}</Text>
-          <Text color="white">{formatCost(stats.avgCostPerJob)}</Text>
-          <Text color="white">{formatTokens(stats.avgTokensPerJob)}</Text>
-        </Box>
+        <Text color="red">✗ {stats.errors}</Text>
+        <Text color="gray"> │ </Text>
+        <Text color="magenta">{formatTokens(stats.totalTokens)} tokens</Text>
+        <Text color="gray"> │ </Text>
+        <Text color="yellow">{formatCost(stats.totalCost)}</Text>
       </Box>
     </Box>
   );
@@ -203,12 +162,8 @@ function App() {
     errors: 0,
     uptime: 0,
     activeJobs: 0,
-    totalPromptTokens: 0,
-    totalCompletionTokens: 0,
     totalTokens: 0,
     totalCost: 0,
-    avgTokensPerJob: 0,
-    avgCostPerJob: 0,
   });
   const [running, setRunning] = useState(false);
   const [runner] = useState(() => new AgentRunner());
@@ -301,7 +256,6 @@ function App() {
     <Box flexDirection="column" padding={1}>
       <Header />
       <StatsPanel stats={stats} running={running} />
-      <TokenStatsPanel stats={stats} />
       <LogPanel logs={logs} />
       <HelpBar />
     </Box>

@@ -10,8 +10,9 @@ A ready-to-use AI agent starter template for the [Seedstr](https://seedstr.io) p
 
 - 🤖 **OpenRouter Integration** - Use any LLM model via OpenRouter (Claude, GPT-4, Llama, etc.)
 - 🔧 **Built-in Tools** - Web search, calculator, and code analysis out of the box
-- 📊 **Beautiful TUI** - Real-time terminal dashboard showing agent activity
-- 🔐 **CLI Management** - Easy setup via command line (register, verify, profile)
+- 📊 **TUI Dashboard** - Real-time terminal interface showing agent activity, token usage, and costs
+- 💰 **Cost Tracking** - Monitor token usage and estimated costs per job and session
+- 🔐 **CLI Commands** - Easy setup via command line (register, verify, profile)
 - ⚙️ **Highly Configurable** - Customize behavior via environment variables
 - 🧪 **Fully Tested** - Comprehensive test suite with Vitest
 - 📝 **TypeScript** - Full type safety and excellent developer experience
@@ -79,6 +80,24 @@ npm start
 # Or run without TUI
 npm start -- --no-tui
 ```
+
+## TUI Dashboard
+
+When you run `npm start`, the agent displays a real-time terminal dashboard showing:
+
+- **Status Panel** - Running status, uptime, jobs processed/skipped/errors
+- **Token Usage Panel** - Real-time token consumption and cost tracking:
+  - Prompt tokens, completion tokens, total tokens
+  - Estimated cost (based on model pricing)
+  - Average tokens and cost per job
+- **Activity Log** - Live feed of agent activity (polling, processing, responses)
+
+### Keyboard Controls
+
+| Key | Action |
+|-----|--------|
+| `q` | Quit the agent gracefully |
+| `r` | Refresh stats |
 
 ## CLI Commands
 
@@ -267,6 +286,16 @@ cp .env.example .env
 # Then edit .env with your API key
 ```
 
+### "API key is required" from Seedstr
+
+If your API key is set but the Seedstr API says it's missing, check that `SEEDSTR_API_URL` uses `www.seedstr.io`:
+
+```env
+SEEDSTR_API_URL=https://www.seedstr.io/api/v1
+```
+
+The non-www URL redirects and strips Authorization headers.
+
 ### Jobs not appearing
 
 - Check your agent is verified (`npm run status`)
@@ -275,7 +304,6 @@ cp .env.example .env
 
 ### Tool calls failing
 
-- Web search requires internet access
 - If using Tavily, ensure your API key is valid
 - Check `LOG_LEVEL=debug` for detailed output
 
