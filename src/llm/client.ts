@@ -63,7 +63,7 @@ export class LLMClient {
     if (config.tools.webSearchEnabled) {
       tools.web_search = tool({
         description:
-          "Search the web for current information. Use this when you need up-to-date information, facts, news, or data that might not be in your training data.",
+          "Search the web for current information. Use this when you need up-to-date information, facts, news, prices, or data that might not be in your training data. Returns an array of search results with title, url, and snippet containing the relevant information.",
         parameters: z.object({
           query: z
             .string()
@@ -74,6 +74,10 @@ export class LLMClient {
           try {
             const results = await webSearch(query);
             logger.tool("web_search", "success", `Found ${results.length} results`);
+            // Log result snippets for debugging
+            for (const r of results.slice(0, 2)) {
+              logger.debug(`Search result: "${r.title}" - ${r.snippet.substring(0, 100)}...`);
+            }
             return results;
           } catch (error) {
             logger.tool("web_search", "error", String(error));
@@ -163,9 +167,19 @@ export class LLMClient {
         maxTokens,
         temperature,
         tools: hasTools ? tools : undefined,
-        maxSteps: hasTools ? 5 : 1, // Allow up to 5 tool calls
+        maxSteps: hasTools ? 10 : 1, // Allow up to 10 tool call steps
+        onStepFinish: (step) => {
+          // Debug logging for each step
+          logger.debug(`Step finished - finishReason: ${step.finishReason}, hasText: ${!!step.text}, toolCalls: ${step.toolCalls?.length || 0}`);
+          if (step.text) {
+            logger.debug(`Step text preview: ${step.text.substring(0, 100)}...`);
+          }
+        },
       });
 
+      // Log completion info
+      logger.debug(`Generation complete - finishReason: ${result.finishReason}, steps: ${result.steps?.length || 0}`);
+      
       // Extract tool calls from steps
       const toolCalls: LLMResponse["toolCalls"] = [];
       if (result.steps) {
@@ -182,20 +196,46 @@ export class LLMClient {
           
           if (stepToolCalls) {
             for (const tc of stepToolCalls) {
+              const toolResult = stepToolResults?.find(
+                (tr) => tr.toolCallId === tc.toolCallId
+              )?.result;
+              
               toolCalls.push({
                 name: tc.toolName,
                 args: tc.args,
-                result: stepToolResults?.find(
-                  (tr) => tr.toolCallId === tc.toolCallId
-                )?.result,
+                result: toolResult,
               });
+              
+              // Log tool results for debugging
+              if (toolResult) {
+                const resultStr = JSON.stringify(toolResult);
+                logger.debug(`Tool ${tc.toolName} result: ${resultStr.substring(0, 200)}...`);
+              }
+            }
+          }
+        }
+      }
+
+      // Use result.text which should contain the final response after all tool calls
+      // If the model stopped due to tool_calls without a final text, this might be empty
+      let finalText = result.text;
+      
+      // If we have no text but have tool results, the model may not have generated a final response
+      if (!finalText && toolCalls.length > 0) {
+        logger.warn("Model finished with tool calls but no final text response. Finish reason:", result.finishReason);
+        // Try to get text from the last step that has text
+        if (result.steps) {
+          for (let i = result.steps.length - 1; i >= 0; i--) {
+            if (result.steps[i].text) {
+              finalText = result.steps[i].text;
+              break;
             }
           }
         }
       }
 
       return {
-        text: result.text,
+        text: finalText,
         toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
         usage: result.usage
           ? {

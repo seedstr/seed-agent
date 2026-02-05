@@ -25,6 +25,7 @@ export async function webSearch(query: string): Promise<WebSearchResult[]> {
  * Search using Tavily API (recommended for better results)
  */
 interface TavilyResponse {
+  answer?: string;
   results?: { title: string; url: string; content: string }[];
 }
 
@@ -42,7 +43,7 @@ async function tavilySearch(
         api_key: apiKey,
         query,
         search_depth: "basic",
-        include_answer: false,
+        include_answer: true, // Get direct answer for factual queries
         include_images: false,
         max_results: 5,
       }),
@@ -53,12 +54,27 @@ async function tavilySearch(
     }
 
     const data = (await response.json()) as TavilyResponse;
+    const results: WebSearchResult[] = [];
 
-    return (data.results || []).map((result) => ({
-      title: result.title,
-      url: result.url,
-      snippet: result.content,
-    }));
+    // Include the direct answer if available (great for price/fact queries)
+    if (data.answer) {
+      results.push({
+        title: "Direct Answer",
+        url: "",
+        snippet: data.answer,
+      });
+    }
+
+    // Add search results
+    for (const result of data.results || []) {
+      results.push({
+        title: result.title,
+        url: result.url,
+        snippet: result.content,
+      });
+    }
+
+    return results;
   } catch (error) {
     logger.warn("Tavily search failed, falling back to DuckDuckGo:", error);
     return duckDuckGoSearch(query);

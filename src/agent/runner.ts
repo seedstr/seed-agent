@@ -201,24 +201,59 @@ export class AgentRunner extends EventEmitter implements TypedEventEmitter {
     try {
       // Generate response using LLM
       const llm = getLLMClient();
-      const responseText = await llm.generateJobResponse({
+      const config = getConfig();
+      const result = await llm.generate({
         prompt: job.prompt,
-        budget: job.budget,
+        systemPrompt: `You are an AI agent participating in the Seedstr marketplace. Your task is to provide the best possible response to job requests.
+
+Guidelines:
+- Be helpful, accurate, and thorough
+- Use tools when needed to get current information
+- Provide well-structured, clear responses
+- Be professional and concise
+- If you use web search, cite your sources
+
+Job Budget: $${job.budget.toFixed(2)} USD
+This indicates how much the requester values this task. Adjust your effort accordingly.`,
+        tools: true,
       });
+
+      // Track token usage
+      let usage: TokenUsage | undefined;
+      if (result.usage) {
+        const cost = estimateCost(
+          config.model,
+          result.usage.promptTokens,
+          result.usage.completionTokens
+        );
+        usage = {
+          promptTokens: result.usage.promptTokens,
+          completionTokens: result.usage.completionTokens,
+          totalTokens: result.usage.totalTokens,
+          estimatedCost: cost,
+        };
+        
+        // Update cumulative stats
+        this.stats.totalPromptTokens += result.usage.promptTokens;
+        this.stats.totalCompletionTokens += result.usage.completionTokens;
+        this.stats.totalTokens += result.usage.totalTokens;
+        this.stats.totalCost += cost;
+      }
 
       this.emitEvent({
         type: "response_generated",
         job,
-        preview: responseText.substring(0, 200),
+        preview: result.text.substring(0, 200),
+        usage,
       });
 
       // Submit response to Seedstr
-      const result = await this.client.submitResponse(job.id, responseText);
+      const submitResult = await this.client.submitResponse(job.id, result.text);
 
       this.emitEvent({
         type: "response_submitted",
         job,
-        responseId: result.response.id,
+        responseId: submitResult.response.id,
       });
 
       this.stats.jobsProcessed++;
@@ -250,6 +285,12 @@ export class AgentRunner extends EventEmitter implements TypedEventEmitter {
       ...this.stats,
       uptime: Date.now() - this.stats.startTime,
       activeJobs: this.processingJobs.size,
+      avgTokensPerJob: this.stats.jobsProcessed > 0 
+        ? Math.round(this.stats.totalTokens / this.stats.jobsProcessed)
+        : 0,
+      avgCostPerJob: this.stats.jobsProcessed > 0
+        ? this.stats.totalCost / this.stats.jobsProcessed
+        : 0,
     };
   }
 
