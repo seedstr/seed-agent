@@ -207,8 +207,18 @@ function App() {
             : "";
           addLog("gen", `Generated: ${event.preview.substring(0, 40)}...${usageInfo}`, "white");
           break;
+        case "project_built":
+          addLog("build", `📦 Built project: ${event.files.length} files`, "magenta");
+          break;
+        case "files_uploading":
+          addLog("upload", `⬆️ Uploading ${event.fileCount} file(s)...`, "blue");
+          break;
+        case "files_uploaded":
+          addLog("upload", `✅ Uploaded: ${event.files.map(f => f.name).join(", ")}`, "green");
+          break;
         case "response_submitted":
-          addLog("done", `Submitted: ${event.responseId.substring(0, 8)}...`, "green");
+          const fileInfo = event.hasFiles ? " (with files)" : "";
+          addLog("done", `Submitted: ${event.responseId.substring(0, 8)}...${fileInfo}`, "green");
           break;
         case "error":
           addLog("error", event.message, "red");

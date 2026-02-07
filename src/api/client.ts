@@ -1,14 +1,19 @@
 import { getConfig } from "../config/index.js";
 import { logger } from "../utils/logger.js";
+import { readFileSync, statSync } from "fs";
+import { basename } from "path";
 import type {
   AgentInfo,
   Job,
   JobsListResponse,
   RegisterResponse,
   SubmitResponseResult,
+  SubmitResponseOptions,
   VerifyResponse,
   UpdateProfileResponse,
   ApiError,
+  FileAttachment,
+  FileUploadResult,
 } from "../types/index.js";
 
 /**
@@ -113,7 +118,7 @@ export class SeedstrClient {
   }
 
   /**
-   * Submit a response to a job
+   * Submit a response to a job (text-only, for backward compatibility)
    */
   async submitResponse(
     jobId: string,
@@ -121,8 +126,126 @@ export class SeedstrClient {
   ): Promise<SubmitResponseResult> {
     return this.request<SubmitResponseResult>(`/jobs/${jobId}/respond`, {
       method: "POST",
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content, responseType: "TEXT" }),
     });
+  }
+
+  /**
+   * Submit a response with optional file attachments
+   */
+  async submitResponseWithFiles(
+    jobId: string,
+    options: SubmitResponseOptions
+  ): Promise<SubmitResponseResult> {
+    const body: Record<string, unknown> = {
+      content: options.content,
+      responseType: options.responseType || "TEXT",
+    };
+
+    if (options.files && options.files.length > 0) {
+      body.files = options.files;
+    }
+
+    return this.request<SubmitResponseResult>(`/jobs/${jobId}/respond`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  }
+
+  /**
+   * Upload a file to the Seedstr file upload service
+   * Returns the file URL and metadata for use in responses
+   */
+  async uploadFile(filePath: string): Promise<FileAttachment> {
+    const config = getConfig();
+    
+    // Get file info
+    const stats = statSync(filePath);
+    const fileName = basename(filePath);
+    
+    // Determine MIME type based on extension
+    const ext = fileName.split(".").pop()?.toLowerCase() || "";
+    const mimeTypes: Record<string, string> = {
+      zip: "application/zip",
+      pdf: "application/pdf",
+      png: "image/png",
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+      gif: "image/gif",
+      webp: "image/webp",
+      json: "application/json",
+      html: "text/html",
+      css: "text/css",
+      js: "text/javascript",
+      ts: "text/typescript",
+      md: "text/markdown",
+      txt: "text/plain",
+      tar: "application/x-tar",
+      gz: "application/gzip",
+    };
+    const mimeType = mimeTypes[ext] || "application/octet-stream";
+
+    logger.debug(`Uploading file: ${fileName} (${stats.size} bytes, ${mimeType})`);
+
+    // Read file and convert to base64
+    const fileBuffer = readFileSync(filePath);
+    const base64Content = fileBuffer.toString("base64");
+
+    // Upload to the v1/upload endpoint (server-side upload API)
+    const uploadUrl = `${config.seedstrApiUrl}/upload`;
+    
+    const response = await fetch(uploadUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        files: [
+          {
+            name: fileName,
+            content: base64Content,
+            type: mimeType,
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      logger.error(`Upload failed: ${response.status} - ${errorText}`);
+      throw new Error(`File upload failed: ${response.status}`);
+    }
+
+    const result = (await response.json()) as { success: boolean; files: FileUploadResult[]; failed?: { name: string; error: string }[] };
+    
+    if (!result.success || !result.files || result.files.length === 0) {
+      throw new Error("Upload failed: No files returned");
+    }
+    
+    const fileResult = result.files[0];
+    logger.debug(`File uploaded successfully: ${fileResult.url}`);
+
+    return {
+      url: fileResult.url,
+      name: fileResult.name,
+      size: fileResult.size,
+      type: fileResult.type,
+    };
+  }
+
+  /**
+   * Upload multiple files and return their attachments
+   */
+  async uploadFiles(filePaths: string[]): Promise<FileAttachment[]> {
+    const attachments: FileAttachment[] = [];
+    
+    for (const filePath of filePaths) {
+      const attachment = await this.uploadFile(filePath);
+      attachments.push(attachment);
+    }
+    
+    return attachments;
   }
 
   /**

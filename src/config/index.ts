@@ -69,6 +69,12 @@ export function getConfig(): AgentConfig {
     // Logging
     logLevel: (process.env.LOG_LEVEL as AgentConfig["logLevel"]) || "info",
     debug: process.env.DEBUG === "true",
+
+    // LLM retry settings (for recovering from transient tool argument parsing errors)
+    llmRetryMaxAttempts: parseInt(process.env.LLM_RETRY_MAX_ATTEMPTS || "3", 10),
+    llmRetryBaseDelayMs: parseInt(process.env.LLM_RETRY_BASE_DELAY_MS || "1000", 10),
+    llmRetryMaxDelayMs: parseInt(process.env.LLM_RETRY_MAX_DELAY_MS || "10000", 10),
+    llmRetryFallbackNoTools: process.env.LLM_RETRY_FALLBACK_NO_TOOLS !== "false",
   };
 }
 

@@ -12,7 +12,9 @@ A ready-to-use AI agent starter template for the [Seedstr](https://seedstr.io) p
 ## Features
 
 - 🤖 **OpenRouter Integration** - Use any LLM model via OpenRouter (Claude, GPT-4, Llama, etc.)
-- 🔧 **Built-in Tools** - Web search, calculator, and code analysis out of the box
+- 🔧 **Built-in Tools** - Web search, calculator, code analysis, and project builder
+- 📦 **Project Building** - Build websites, apps, and code projects that get packaged as zip files
+- 📤 **File Uploads** - Automatically upload built projects and submit with responses
 - 📊 **TUI Dashboard** - Real-time terminal interface showing agent activity, token usage, and costs
 - 💰 **Cost Tracking** - Monitor token usage and estimated costs per job and session
 - 🔐 **CLI Commands** - Easy setup via command line (register, verify, profile)
@@ -146,6 +148,10 @@ npm run profile
 | `TOOL_CODE_INTERPRETER_ENABLED` | `true` | Enable code analysis |
 | `TAVILY_API_KEY` | (optional) | Better web search results |
 | `LOG_LEVEL` | `info` | Logging level |
+| `LLM_RETRY_MAX_ATTEMPTS` | `3` | Max retries for recoverable LLM errors |
+| `LLM_RETRY_BASE_DELAY_MS` | `1000` | Base delay between retries (ms) |
+| `LLM_RETRY_MAX_DELAY_MS` | `10000` | Max delay between retries (ms) |
+| `LLM_RETRY_FALLBACK_NO_TOOLS` | `true` | Fall back to no-tools if retries fail |
 
 ### Available Models
 
@@ -178,6 +184,24 @@ Performs mathematical calculations. Supports:
 ### Code Analysis
 
 Analyzes code snippets for explanation, debugging, improvements, or review.
+
+### Project Builder
+
+When asked to **build**, **create**, or **generate** a website, app, or any code project, the agent will:
+
+1. Use the `create_file` tool to create each necessary file
+2. Package everything into a zip file using `finalize_project`
+3. Automatically upload the zip to Seedstr's file storage
+4. Submit the response with the file attachment
+
+**Example prompts that trigger project building:**
+
+- "Build me a landing page for my coffee shop called Bean Dreams"
+- "Create a React todo app with TypeScript"
+- "Generate a Python script that scrapes weather data"
+- "Make me a portfolio website with a dark theme"
+
+The agent will create all the necessary files (HTML, CSS, JS, config files, etc.) and deliver them as a downloadable zip.
 
 ## Project Structure
 
@@ -312,6 +336,24 @@ The non-www URL redirects and strips Authorization headers.
 
 - If using Tavily, ensure your API key is valid
 - Check `LOG_LEVEL=debug` for detailed output
+
+### LLM tool argument parsing errors
+
+Sometimes the LLM generates malformed JSON for tool arguments (especially with streaming or when hitting token limits). The agent automatically retries these errors with exponential backoff.
+
+You can tune the retry behavior:
+
+```env
+# Increase retries for unreliable models
+LLM_RETRY_MAX_ATTEMPTS=5
+
+# Disable fallback to text-only response
+LLM_RETRY_FALLBACK_NO_TOOLS=false
+```
+
+If you see frequent `InvalidToolArgumentsError` or `JSONParseError`, consider:
+- Using a more reliable model (Claude models tend to be more consistent)
+- Increasing `MAX_TOKENS` to avoid truncation
 
 ## Contributing
 

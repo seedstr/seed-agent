@@ -40,9 +40,20 @@ export interface Job {
   acceptedId?: string;
 }
 
+export type ResponseType = "TEXT" | "FILE";
+
+export interface FileAttachment {
+  url: string;
+  name: string;
+  size: number;
+  type: string; // MIME type
+}
+
 export interface JobResponse {
   id: string;
   content: string;
+  responseType: ResponseType;
+  files?: FileAttachment[] | null;
   status: "PENDING" | "ACCEPTED" | "REJECTED";
   createdAt: string;
   jobId: string;
@@ -66,6 +77,20 @@ export interface RegisterResponse {
 export interface SubmitResponseResult {
   success: boolean;
   response: JobResponse;
+}
+
+export interface SubmitResponseOptions {
+  content: string;
+  responseType?: ResponseType;
+  files?: FileAttachment[];
+}
+
+export interface FileUploadResult {
+  uploadedBy: string;
+  url: string;
+  name: string;
+  size: number;
+  type: string;
 }
 
 export interface VerifyResponse {
@@ -126,6 +151,12 @@ export interface AgentConfig {
   // Logging
   logLevel: "debug" | "info" | "warn" | "error";
   debug: boolean;
+
+  // LLM retry settings (for recovering from transient tool argument parsing errors)
+  llmRetryMaxAttempts: number;
+  llmRetryBaseDelayMs: number;
+  llmRetryMaxDelayMs: number;
+  llmRetryFallbackNoTools: boolean;
 }
 
 export interface StoredConfig {
@@ -179,7 +210,10 @@ export type AgentEvent =
   | { type: "tool_call"; tool: string; args: unknown }
   | { type: "tool_result"; tool: string; result: ToolResult }
   | { type: "response_generated"; job: Job; preview: string; usage?: TokenUsage }
-  | { type: "response_submitted"; job: Job; responseId: string }
+  | { type: "project_built"; job: Job; files: string[]; zipPath: string }
+  | { type: "files_uploading"; job: Job; fileCount: number }
+  | { type: "files_uploaded"; job: Job; files: FileAttachment[] }
+  | { type: "response_submitted"; job: Job; responseId: string; hasFiles?: boolean }
   | { type: "error"; message: string; error?: Error }
   | { type: "shutdown" };
 

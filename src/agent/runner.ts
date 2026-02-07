@@ -4,7 +4,8 @@ import { SeedstrClient } from "../api/client.js";
 import { getLLMClient } from "../llm/client.js";
 import { getConfig } from "../config/index.js";
 import { logger } from "../utils/logger.js";
-import type { Job, AgentEvent, TokenUsage } from "../types/index.js";
+import { cleanupProject } from "../tools/projectBuilder.js";
+import type { Job, AgentEvent, TokenUsage, FileAttachment } from "../types/index.js";
 
 // Approximate costs per 1M tokens for common models (input/output)
 const MODEL_COSTS: Record<string, { input: number; output: number }> = {
@@ -213,8 +214,19 @@ Guidelines:
 - Be professional and concise
 - If you use web search, cite your sources
 
+IMPORTANT - Building Projects:
+When asked to BUILD, CREATE, MAKE, or GENERATE a website, app, tool, script, or any code project:
+1. Use the create_file tool to create each necessary file
+2. After creating all files, use finalize_project to package them into a zip
+3. Provide a clear summary of what you built and how to use it
+
+Example build request: "Build me a landing page for my coffee shop called Bean Dreams"
+- You would create index.html, styles.css, and any other needed files
+- Then call finalize_project with a name like "bean-dreams-website"
+- Provide a summary explaining the website and how to open/deploy it
+
 Job Budget: $${job.budget.toFixed(2)} USD
-This indicates how much the requester values this task. Adjust your effort accordingly.`,
+This indicates how much the requester values this task. Higher budgets often mean the requester wants something built, not just described.`,
         tools: true,
       });
 
@@ -247,14 +259,75 @@ This indicates how much the requester values this task. Adjust your effort accor
         usage,
       });
 
-      // Submit response to Seedstr
-      const submitResult = await this.client.submitResponse(job.id, result.text);
+      // Check if a project was built
+      if (result.projectBuild && result.projectBuild.success) {
+        const { projectBuild } = result;
+        
+        this.emitEvent({
+          type: "project_built",
+          job,
+          files: projectBuild.files,
+          zipPath: projectBuild.zipPath,
+        });
 
-      this.emitEvent({
-        type: "response_submitted",
-        job,
-        responseId: submitResult.response.id,
-      });
+        try {
+          // Upload the zip file
+          this.emitEvent({
+            type: "files_uploading",
+            job,
+            fileCount: 1,
+          });
+
+          const uploadedFiles = await this.client.uploadFile(projectBuild.zipPath);
+          
+          this.emitEvent({
+            type: "files_uploaded",
+            job,
+            files: [uploadedFiles],
+          });
+
+          // Submit response with file attachment
+          const submitResult = await this.client.submitResponseWithFiles(job.id, {
+            content: result.text,
+            responseType: "FILE",
+            files: [uploadedFiles],
+          });
+
+          this.emitEvent({
+            type: "response_submitted",
+            job,
+            responseId: submitResult.response.id,
+            hasFiles: true,
+          });
+
+          // Cleanup project files
+          cleanupProject(projectBuild.projectDir, projectBuild.zipPath);
+        } catch (uploadError) {
+          // If upload fails, fall back to text-only response
+          logger.error("Failed to upload project files, submitting text-only response:", uploadError);
+          
+          const submitResult = await this.client.submitResponse(job.id, result.text);
+          this.emitEvent({
+            type: "response_submitted",
+            job,
+            responseId: submitResult.response.id,
+            hasFiles: false,
+          });
+
+          // Still cleanup
+          cleanupProject(projectBuild.projectDir, projectBuild.zipPath);
+        }
+      } else {
+        // Text-only response
+        const submitResult = await this.client.submitResponse(job.id, result.text);
+
+        this.emitEvent({
+          type: "response_submitted",
+          job,
+          responseId: submitResult.response.id,
+          hasFiles: false,
+        });
+      }
 
       this.stats.jobsProcessed++;
     } catch (error) {

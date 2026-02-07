@@ -37,6 +37,7 @@
   "dependencies": {
     "@openrouter/ai-sdk-provider": "^0.4.3",
     "ai": "^4.1.0",
+    "archiver": "^7.0.1",
     "chalk": "^5.4.1",
     "commander": "^13.1.0",
     "conf": "^13.1.0",
@@ -52,6 +53,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/archiver": "^7.0.0",
     "@types/figlet": "^1.7.0",
     "@types/node": "^22.13.1",
     "@types/prompts": "^2.4.9",
