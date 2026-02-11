@@ -26,18 +26,59 @@ export interface VerificationStatus {
 }
 
 export interface AgentInfo extends Agent {
+  skills: string[];
   verification: VerificationStatus;
 }
+
+export type JobType = "STANDARD" | "SWARM";
 
 export interface Job {
   id: string;
   prompt: string;
   budget: number;
-  status: "OPEN" | "COMPLETED" | "EXPIRED" | "CANCELLED";
+  status: "OPEN" | "IN_PROGRESS" | "COMPLETED" | "EXPIRED" | "CANCELLED";
   expiresAt: string;
   createdAt: string;
   responseCount: number;
   acceptedId?: string;
+  // V2 fields
+  routerVersion?: number;
+  jobType?: JobType;
+  maxAgents?: number | null;
+  budgetPerAgent?: number | null;
+  requiredSkills?: string[];
+  minReputation?: number | null;
+  acceptedCount?: number;
+}
+
+export interface AcceptJobResult {
+  success: boolean;
+  acceptance: {
+    id: string;
+    jobId: string;
+    status: string;
+    responseDeadline: string;
+    budgetPerAgent: number | null;
+  };
+  slotsRemaining: number;
+  isFull: boolean;
+}
+
+export interface DeclineJobResult {
+  success: boolean;
+  message: string;
+}
+
+/** Pusher job:new event payload */
+export interface WebSocketJobEvent {
+  jobId: string;
+  prompt: string;
+  budget: number;
+  jobType: JobType;
+  maxAgents: number | null;
+  budgetPerAgent: number | null;
+  requiredSkills: string[];
+  expiresAt: string;
 }
 
 export type ResponseType = "TEXT" | "FILE";
@@ -147,6 +188,12 @@ export interface AgentConfig {
 
   // Platform
   seedstrApiUrl: string;
+  seedstrApiUrlV2: string;
+
+  // WebSocket (Pusher)
+  useWebSocket: boolean;
+  pusherKey: string;
+  pusherCluster: string;
 
   // Logging
   logLevel: "debug" | "info" | "warn" | "error";
@@ -204,7 +251,11 @@ export interface TokenUsage {
 export type AgentEvent =
   | { type: "startup" }
   | { type: "polling"; jobCount: number }
+  | { type: "websocket_connected" }
+  | { type: "websocket_disconnected"; reason?: string }
+  | { type: "websocket_job"; jobId: string }
   | { type: "job_found"; job: Job }
+  | { type: "job_accepted"; job: Job; budgetPerAgent: number | null }
   | { type: "job_processing"; job: Job }
   | { type: "job_skipped"; job: Job; reason: string }
   | { type: "tool_call"; tool: string; args: unknown }

@@ -14,6 +14,8 @@ import type {
   ApiError,
   FileAttachment,
   FileUploadResult,
+  AcceptJobResult,
+  DeclineJobResult,
 } from "../types/index.js";
 
 /**
@@ -22,19 +24,23 @@ import type {
  */
 export class SeedstrClient {
   private baseUrl: string;
+  private baseUrlV2: string;
   private apiKey: string;
 
   constructor(apiKey?: string, baseUrl?: string) {
     const config = getConfig();
     this.apiKey = apiKey ?? config.seedstrApiKey ?? "";
     this.baseUrl = baseUrl ?? config.seedstrApiUrl;
+    this.baseUrlV2 = config.seedstrApiUrlV2;
   }
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    useV2 = false
   ): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
+    const base = useV2 ? this.baseUrlV2 : this.baseUrl;
+    const url = `${base}${endpoint}`;
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -104,17 +110,60 @@ export class SeedstrClient {
   }
 
   /**
-   * List available jobs
+   * List available jobs (v1)
    */
   async listJobs(limit = 20, offset = 0): Promise<JobsListResponse> {
     return this.request<JobsListResponse>(`/jobs?limit=${limit}&offset=${offset}`);
   }
 
   /**
-   * Get a specific job by ID
+   * List available jobs via v2 API (skill-matched, includes swarm jobs)
+   */
+  async listJobsV2(limit = 20, offset = 0): Promise<JobsListResponse> {
+    return this.request<JobsListResponse>(`/jobs?limit=${limit}&offset=${offset}`, {}, true);
+  }
+
+  /**
+   * Get a specific job by ID (v2 — includes acceptance and swarm info)
+   */
+  async getJobV2(jobId: string): Promise<Job> {
+    return this.request<Job>(`/jobs/${jobId}`, {}, true);
+  }
+
+  /**
+   * Get a specific job by ID (v1)
    */
   async getJob(jobId: string): Promise<Job> {
     return this.request<Job>(`/jobs/${jobId}`);
+  }
+
+  /**
+   * Accept a SWARM job (v2) — first-come-first-served
+   */
+  async acceptJob(jobId: string): Promise<AcceptJobResult> {
+    return this.request<AcceptJobResult>(`/jobs/${jobId}/accept`, {
+      method: "POST",
+    }, true);
+  }
+
+  /**
+   * Decline a job (v2) — optional, for analytics
+   */
+  async declineJob(jobId: string, reason?: string): Promise<DeclineJobResult> {
+    return this.request<DeclineJobResult>(`/jobs/${jobId}/decline`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }, true);
+  }
+
+  /**
+   * Update agent skills via v1 /me endpoint
+   */
+  async updateSkills(skills: string[]): Promise<UpdateProfileResponse> {
+    return this.request<UpdateProfileResponse>("/me", {
+      method: "PATCH",
+      body: JSON.stringify({ skills }),
+    });
   }
 
   /**
@@ -131,7 +180,24 @@ export class SeedstrClient {
   }
 
   /**
-   * Submit a response with optional file attachments
+   * Submit a response via v2 API (supports auto-pay for SWARM jobs)
+   */
+  async submitResponseV2(
+    jobId: string,
+    content: string,
+    responseType: "TEXT" | "FILE" = "TEXT",
+    files?: FileAttachment[]
+  ): Promise<SubmitResponseResult> {
+    const body: Record<string, unknown> = { content, responseType };
+    if (files && files.length > 0) body.files = files;
+    return this.request<SubmitResponseResult>(`/jobs/${jobId}/respond`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }, true);
+  }
+
+  /**
+   * Submit a response with optional file attachments (v1)
    */
   async submitResponseWithFiles(
     jobId: string,

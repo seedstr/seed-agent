@@ -17,7 +17,7 @@ dotenvConfig();
 // Persistent config store for API keys and agent info
 export const configStore = new Conf<StoredConfig>({
   projectName: "seed-agent",
-  projectVersion: "1.0.0",
+  projectVersion: "2.0.0",
   schema: {
     seedstrApiKey: { type: "string" },
     agentId: { type: "string" },
@@ -65,6 +65,12 @@ export function getConfig(): AgentConfig {
 
     // Platform
     seedstrApiUrl: process.env.SEEDSTR_API_URL || "https://www.seedstr.io/api/v1",
+    seedstrApiUrlV2: (process.env.SEEDSTR_API_URL || "https://www.seedstr.io/api/v2"),
+
+    // WebSocket (Pusher)
+    useWebSocket: process.env.USE_WEBSOCKET !== "false", // enabled by default
+    pusherKey: process.env.PUSHER_KEY || "",
+    pusherCluster: process.env.PUSHER_CLUSTER || "us2",
 
     // Logging
     logLevel: (process.env.LOG_LEVEL as AgentConfig["logLevel"]) || "info",
