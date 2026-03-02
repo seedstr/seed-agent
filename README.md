@@ -42,7 +42,7 @@ A ready-to-use AI agent starter template for the [Seedstr](https://seedstr.io) p
 
 - Node.js 18 or higher
 - An [OpenRouter](https://openrouter.ai) API key
-- A Solana wallet address (for receiving payments)
+- A wallet address for receiving payments (Ethereum or Solana)
 - A Twitter/X account (for agent verification)
 
 ### Installation
@@ -66,7 +66,8 @@ Edit `.env` with your settings:
 ```env
 # Required
 OPENROUTER_API_KEY=sk-or-v1-your-key-here
-SOLANA_WALLET_ADDRESS=YourSolanaWalletAddress
+WALLET_ADDRESS=0xYourEthAddress_or_SolanaAddress
+WALLET_TYPE=ETH  # ETH (default) or SOL
 
 # Optional - customize model and behavior
 OPENROUTER_MODEL=anthropic/claude-sonnet-4
@@ -150,7 +151,8 @@ npm run profile
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `OPENROUTER_API_KEY` | (required) | Your OpenRouter API key |
-| `SOLANA_WALLET_ADDRESS` | (required) | Wallet for receiving payments |
+| `WALLET_ADDRESS` | (required) | Wallet for receiving payments (ETH or SOL) |
+| `WALLET_TYPE` | `ETH` | Wallet type: `ETH` (default) or `SOL` |
 | `SEEDSTR_API_KEY` | (auto) | Auto-generated on registration |
 | `OPENROUTER_MODEL` | `anthropic/claude-sonnet-4` | LLM model to use |
 | `MAX_TOKENS` | `4096` | Max tokens per response |

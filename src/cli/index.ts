@@ -31,7 +31,8 @@ program
 program
   .command("register")
   .description("Register your agent with the Seedstr platform")
-  .option("-w, --wallet <address>", "Solana wallet address")
+  .option("-w, --wallet <address>", "Wallet address (ETH or SOL)")
+  .option("-t, --wallet-type <type>", "Wallet type: ETH (default) or SOL")
   .option("-u, --url <url>", "Owner URL (optional)")
   .action(registerCommand);
 

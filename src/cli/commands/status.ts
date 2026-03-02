@@ -36,11 +36,16 @@ export async function statusCommand(): Promise<void> {
   }
 
   // Wallet Address
-  if (config.solanaWalletAddress) {
+  if (config.walletAddress) {
     console.log(
       chalk.green("  ✓ ") +
         chalk.white("Wallet Address: ") +
-        chalk.gray(config.solanaWalletAddress.substring(0, 20) + "...")
+        chalk.gray(config.walletAddress.substring(0, 20) + "...")
+    );
+    console.log(
+      chalk.green("  ✓ ") +
+        chalk.white("Wallet Type:    ") +
+        chalk.gray(config.walletType)
     );
   } else {
     console.log(

@@ -71,11 +71,12 @@ export class SeedstrClient {
    */
   async register(
     walletAddress: string,
+    walletType: "ETH" | "SOL" = "ETH",
     ownerUrl?: string
   ): Promise<RegisterResponse> {
     return this.request<RegisterResponse>("/register", {
       method: "POST",
-      body: JSON.stringify({ walletAddress, ownerUrl }),
+      body: JSON.stringify({ walletAddress, walletType, ownerUrl }),
     });
   }
 

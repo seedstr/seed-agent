@@ -8,9 +8,11 @@ import {
   isRegistered,
   getStoredAgent,
 } from "../../config/index.js";
+import type { WalletType } from "../../types/index.js";
 
 interface RegisterOptions {
   wallet?: string;
+  walletType?: string;
   url?: string;
 }
 
@@ -21,6 +23,7 @@ export async function registerCommand(options: RegisterOptions): Promise<void> {
     console.log(chalk.yellow("\n⚠ Agent is already registered!"));
     console.log(chalk.gray(`  Agent ID: ${stored.agentId}`));
     console.log(chalk.gray(`  Wallet: ${stored.walletAddress}`));
+    console.log(chalk.gray(`  Wallet Type: ${stored.walletType || "ETH"}`));
 
     const { confirm } = await prompts({
       type: "confirm",
@@ -37,19 +40,49 @@ export async function registerCommand(options: RegisterOptions): Promise<void> {
 
   console.log(chalk.cyan("\n📝 Agent Registration\n"));
 
+  // Get wallet type (ETH or SOL)
+  let walletType: WalletType;
+  if (options.walletType && (options.walletType === "ETH" || options.walletType === "SOL")) {
+    walletType = options.walletType;
+  } else {
+    const response = await prompts({
+      type: "select",
+      name: "walletType",
+      message: "Which wallet type would you like to use for payments?",
+      choices: [
+        { title: "ETH (Ethereum)", value: "ETH", description: "Receive payments in ETH (default)" },
+        { title: "SOL (Solana)", value: "SOL", description: "Receive payments in SOL" },
+      ],
+      initial: 0,
+    });
+    walletType = response.walletType;
+  }
+
+  if (!walletType) {
+    console.log(chalk.red("\n✗ Wallet type selection is required"));
+    process.exit(1);
+  }
+
+  console.log(chalk.gray(`  Wallet type: ${walletType}\n`));
+
   // Get wallet address
   let walletAddress = options.wallet;
   if (!walletAddress) {
     const config = getConfig();
-    walletAddress = config.solanaWalletAddress;
+    walletAddress = config.walletAddress;
 
     if (!walletAddress) {
+      const addressLabel = walletType === "ETH" ? "Ethereum (0x...)" : "Solana";
       const response = await prompts({
         type: "text",
         name: "wallet",
-        message: "Enter your Solana wallet address:",
-        validate: (value: string) =>
-          value.length >= 32 ? true : "Please enter a valid Solana wallet address",
+        message: `Enter your ${addressLabel} wallet address:`,
+        validate: (value: string) => {
+          if (walletType === "ETH") {
+            return /^0x[0-9a-fA-F]{40}$/.test(value) ? true : "Please enter a valid Ethereum address (0x followed by 40 hex characters)";
+          }
+          return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(value) ? true : "Please enter a valid Solana address (32-44 base58 characters)";
+        },
       });
       walletAddress = response.wallet;
     } else {
@@ -78,7 +111,7 @@ export async function registerCommand(options: RegisterOptions): Promise<void> {
 
   try {
     const client = new SeedstrClient("", getConfig().seedstrApiUrl);
-    const result = await client.register(walletAddress, ownerUrl);
+    const result = await client.register(walletAddress, walletType, ownerUrl);
 
     spinner.succeed("Agent registered successfully!");
 
@@ -87,12 +120,14 @@ export async function registerCommand(options: RegisterOptions): Promise<void> {
       apiKey: result.apiKey,
       agentId: result.agentId,
       walletAddress,
+      walletType,
     });
 
     console.log("\n" + chalk.green("✓ Registration complete!"));
     console.log(chalk.gray("─".repeat(50)));
-    console.log(chalk.white("  Agent ID:    ") + chalk.cyan(result.agentId));
-    console.log(chalk.white("  API Key:     ") + chalk.cyan(result.apiKey));
+    console.log(chalk.white("  Agent ID:      ") + chalk.cyan(result.agentId));
+    console.log(chalk.white("  API Key:       ") + chalk.cyan(result.apiKey));
+    console.log(chalk.white("  Wallet Type:   ") + chalk.cyan(walletType));
     console.log(chalk.gray("─".repeat(50)));
 
     console.log(chalk.yellow("\n⚠ Important: Your API key has been saved locally."));

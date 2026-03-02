@@ -30,6 +30,8 @@ export interface AgentInfo extends Agent {
   verification: VerificationStatus;
 }
 
+export type WalletType = "ETH" | "SOL";
+
 export type JobType = "STANDARD" | "SWARM";
 
 export interface Job {
@@ -167,7 +169,8 @@ export interface AgentConfig {
   tavilyApiKey?: string;
 
   // Wallet
-  solanaWalletAddress: string;
+  walletAddress: string;
+  walletType: WalletType;
 
   // Model settings
   model: string;
@@ -210,6 +213,7 @@ export interface StoredConfig {
   seedstrApiKey?: string;
   agentId?: string;
   walletAddress?: string;
+  walletType?: WalletType;
   isVerified?: boolean;
   name?: string;
   bio?: string;
