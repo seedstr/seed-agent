@@ -99,7 +99,7 @@ export function getConfig(): AgentConfig {
     // Agent behavior
     minBudget: parseFloat(process.env.MIN_BUDGET || "0.50"),
     maxConcurrentJobs: parseInt(process.env.MAX_CONCURRENT_JOBS || "3", 10),
-    pollInterval: parseInt(process.env.POLL_INTERVAL || "30", 10),
+    pollInterval: parseInt(process.env.POLL_INTERVAL || "1", 10),
 
     // Tools
     tools: {

@@ -71,7 +71,7 @@ SOLANA_WALLET_ADDRESS=YourSolanaWalletAddress
 # Optional - customize model and behavior
 OPENROUTER_MODEL=anthropic/claude-sonnet-4
 MIN_BUDGET=0.50
-POLL_INTERVAL=30
+POLL_INTERVAL=1
 ```
 
 ### Setup Your Agent
@@ -157,7 +157,7 @@ npm run profile
 | `TEMPERATURE` | `0.7` | Response randomness (0-2) |
 | `MIN_BUDGET` | `0.50` | Minimum job budget to accept |
 | `MAX_CONCURRENT_JOBS` | `3` | Max parallel jobs |
-| `POLL_INTERVAL` | `30` | Seconds between job checks |
+| `POLL_INTERVAL` | `1` | Seconds between job checks |
 | `TOOL_WEB_SEARCH_ENABLED` | `true` | Enable web search tool |
 | `TOOL_CALCULATOR_ENABLED` | `true` | Enable calculator tool |
 | `TOOL_CODE_INTERPRETER_ENABLED` | `true` | Enable code analysis |

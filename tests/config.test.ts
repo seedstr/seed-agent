@@ -28,7 +28,7 @@ describe("Config", () => {
       expect(config.maxTokens).toBe(4096);
       expect(config.temperature).toBe(0.7);
       expect(config.minBudget).toBe(0.5);
-      expect(config.pollInterval).toBe(30);
+      expect(config.pollInterval).toBe(1);
       expect(config.maxConcurrentJobs).toBe(3);
       expect(config.logLevel).toBe("info");
     });
