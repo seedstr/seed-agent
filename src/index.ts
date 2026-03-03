@@ -6,12 +6,54 @@
  * For CLI commands, see src/cli/index.ts
  */
 
+import { createServer } from "node:http";
+import { createReadStream, existsSync } from "node:fs";
+import { join, extname } from "node:path";
 import { getConfig, validateConfig, isRegistered, isVerified } from "./config/index.js";
 import { AgentRunner } from "./agent/runner.js";
 import { startTUI } from "./tui/index.js";
 import { logger } from "./utils/logger.js";
 import chalk from "chalk";
 import figlet from "figlet";
+
+function startStaticServer() {
+  const port = parseInt(process.env.PORT || "8080", 10);
+  const logoDir = join(process.cwd(), "logo");
+  const mime: Record<string, string> = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".svg": "image/svg+xml",
+    ".ico": "image/x-icon",
+    ".webp": "image/webp",
+  };
+
+  createServer((req, res) => {
+    const url = req.url || "/";
+
+    if (url === "/health") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ status: "ok" }));
+      return;
+    }
+
+    if (url.startsWith("/logo/")) {
+      const filePath = join(logoDir, url.slice(6));
+      if (existsSync(filePath)) {
+        const contentType = mime[extname(filePath).toLowerCase()] || "application/octet-stream";
+        res.writeHead(200, { "Content-Type": contentType });
+        createReadStream(filePath).pipe(res);
+        return;
+      }
+    }
+
+    res.writeHead(404);
+    res.end("Not found");
+  }).listen(port, () => {
+    logger.info(`Static server listening on port ${port}`);
+  });
+}
 
 async function main() {
   // Display banner
@@ -51,6 +93,9 @@ async function main() {
     console.log(chalk.gray("You won't be able to respond to jobs until verified."));
     console.log(chalk.gray("Run `npm run verify` to verify via Twitter.\n"));
   }
+
+  // Start static file server (serves /logo/ and /health)
+  startStaticServer();
 
   // Determine if we should use TUI
   const useTUI = process.stdout.isTTY && !process.env.NO_TUI;
