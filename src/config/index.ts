@@ -2,7 +2,7 @@ import { config as dotenvConfig } from "dotenv";
 import { fileURLToPath } from "url";
 import { dirname, resolve } from "path";
 import Conf from "conf";
-import type { AgentConfig, StoredConfig } from "../types/index.js";
+import type { AgentConfig, StoredConfig, WalletType } from "../types/index.js";
 
 // Get the directory of this module
 const __filename = fileURLToPath(import.meta.url);
@@ -30,6 +30,7 @@ export const configStore = new Conf<StoredConfig>({
     seedstrApiKey: { type: "string" },
     agentId: { type: "string" },
     walletAddress: { type: "string" },
+    walletType: { type: "string" },
     isVerified: { type: "boolean" },
     name: { type: "string" },
     bio: { type: "string" },
@@ -79,8 +80,10 @@ export function getConfig(): AgentConfig {
     tavilyApiKey: process.env.TAVILY_API_KEY || "",
 
     // Wallet
-    solanaWalletAddress:
-      process.env.SOLANA_WALLET_ADDRESS || stored.walletAddress || "",
+    walletAddress:
+      process.env.WALLET_ADDRESS || process.env.SOLANA_WALLET_ADDRESS || stored.walletAddress || "",
+    walletType:
+      (process.env.WALLET_TYPE as WalletType) || stored.walletType || "ETH",
 
     // LLM provider (direct API)
     primaryProvider,
@@ -150,8 +153,8 @@ export function validateConfig(config: AgentConfig): string[] {
     errors.push("At least one of OPENAI_API_KEY or ANTHROPIC_API_KEY is required");
   }
 
-  if (!config.solanaWalletAddress) {
-    errors.push("SOLANA_WALLET_ADDRESS is required");
+  if (!config.walletAddress) {
+    errors.push("WALLET_ADDRESS is required");
   }
 
   return errors;
@@ -178,10 +181,12 @@ export function saveRegistration(data: {
   apiKey: string;
   agentId: string;
   walletAddress: string;
+  walletType: WalletType;
 }): void {
   configStore.set("seedstrApiKey", data.apiKey);
   configStore.set("agentId", data.agentId);
   configStore.set("walletAddress", data.walletAddress);
+  configStore.set("walletType", data.walletType);
 }
 
 /**
